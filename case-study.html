@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<!-- Security Gate Pass — reference-build case study. Self-contained: no external dependencies, no JS, no trackers. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anatomy of a Build: a Revocable Token-Vesting Vault</title>
+<meta name="description" content="A reference build showing the adversarial loop and deterministic gates at work — including the design-stage underflow that would have bricked every pre-cliff call, caught before a line of code.">
+<meta name="theme-color" content="#0e7a63">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Anatomy of a Build: a Revocable Token-Vesting Vault">
+<meta property="og:description" content="The adversarial review caught a subtraction underflow that would have reverted every pre-cliff call — before a line of implementation existed. Here's the full anatomy.">
+<style>
+  :root{
+    --bg:#fbfaf8; --surface:#ffffff; --ink:#181a1f; --ink-soft:#3b3f48;
+    --muted:#6a6f7a; --line:#e7e3db; --line-soft:#f0ece4;
+    --accent:#0e7a63; --accent-strong:#0a5f4d; --accent-tint:#e7f3ef;
+    --warn-tint:#fbf4e9; --warn-line:#e7d6b8; --warn-ink:#7a5a1e;
+    --code-bg:#f3f0e9; --code-ink:#2b2e35;
+    --maxw:720px;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"Apple Color Emoji",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:18px; line-height:1.66; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility}
+  ::selection{background:var(--accent-tint)}
+  a{color:var(--accent-strong); text-underline-offset:3px}
+  a:hover{color:var(--ink)}
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 22px}
+
+  .topbar{border-bottom:1px solid var(--line); background:rgba(251,250,248,.86); backdrop-filter:saturate(140%) blur(6px); position:sticky; top:0; z-index:10}
+  .topbar .wrap{display:flex; align-items:center; justify-content:space-between; height:58px}
+  .back{display:inline-flex; align-items:center; gap:8px; font-size:14px; font-weight:600; color:var(--muted); text-decoration:none}
+  .back:hover{color:var(--ink)}
+  .topbar .tcta{font-size:14px; font-weight:600; color:var(--accent-strong); text-decoration:none; white-space:nowrap}
+  .topbar .tcta:hover{color:var(--ink)}
+
+  .kicker{font-family:var(--mono); font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent-strong); margin:0 0 14px}
+
+  header.head{padding:60px 0 26px}
+  header.head h1{font-size:clamp(28px,4.6vw,42px); line-height:1.12; letter-spacing:-.02em; font-weight:800; margin:0 0 16px}
+  header.head .sub{font-size:19px; color:var(--ink-soft); margin:0; font-style:italic; max-width:600px}
+
+  article{padding-bottom:20px}
+  article section{padding:30px 0; border-top:1px solid var(--line)}
+  h2{font-size:clamp(21px,3.2vw,27px); line-height:1.2; letter-spacing:-.015em; font-weight:750; margin:0 0 16px}
+  h3{font-size:18.5px; font-weight:700; margin:26px 0 8px; letter-spacing:-.01em}
+  h3 .n{font-family:var(--mono); color:var(--accent-strong); margin-right:8px}
+  p{margin:0 0 18px; color:var(--ink-soft)}
+  p strong, li strong{color:var(--ink); font-weight:680}
+  code{font-family:var(--mono); font-size:.9em; background:var(--code-bg); border:1px solid var(--line); border-radius:5px; padding:1px 6px; color:var(--code-ink)}
+  ul.clean{list-style:none; padding:0; margin:0 0 18px}
+  ul.clean li{position:relative; padding-left:26px; margin:0 0 12px; color:var(--ink-soft)}
+  ul.clean li::before{content:""; position:absolute; left:4px; top:12px; width:7px; height:7px; border-radius:2px; background:var(--accent)}
+
+  ol.stages{margin:0; padding-left:0; list-style:none; counter-reset:s}
+  ol.stages li{position:relative; padding:14px 0 14px 46px; border-top:1px solid var(--line-soft); color:var(--ink-soft)}
+  ol.stages li:first-child{border-top:0}
+  ol.stages li::before{counter-increment:s; content:counter(s,decimal-leading-zero); position:absolute; left:0; top:14px; font-family:var(--mono); font-size:14px; font-weight:600; color:var(--accent-strong)}
+  ol.stages li strong{color:var(--ink)}
+
+  .pull{font-size:21px; line-height:1.4; color:var(--ink); font-weight:600; letter-spacing:-.01em; margin:22px 0; padding-left:18px; border-left:3px solid var(--accent)}
+
+  .callout{background:var(--warn-tint); border:1px solid var(--warn-line); border-radius:12px; padding:20px 22px; margin:6px 0 0}
+  .callout .tag{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--warn-ink); margin:0 0 8px; font-weight:600}
+  .callout ul.clean{margin:0}
+  .callout ul.clean li{font-size:16.5px}
+
+  .spec{display:flex; flex-wrap:wrap; gap:8px; margin:4px 0 4px}
+  .chip{font-family:var(--mono); font-size:12.5px; color:var(--code-ink); background:var(--code-bg); border:1px solid var(--line); border-radius:7px; padding:6px 10px}
+
+  .btn{display:inline-flex; align-items:center; gap:9px; font-weight:650; font-size:16px; text-decoration:none; border-radius:10px; padding:14px 22px; transition:transform .12s ease, background .15s ease}
+  .btn-primary{background:var(--accent); color:#fff; box-shadow:0 8px 22px -12px rgba(14,122,99,.6)}
+  .btn-primary:hover{background:var(--accent-strong); color:#fff; transform:translateY(-1px)}
+  .btn .arrow{transition:transform .15s ease}
+  .btn:hover .arrow{transform:translateX(3px)}
+
+  .closing{background:var(--ink); color:#fff; border-radius:16px; padding:40px 32px; margin:30px 0 8px; text-align:center}
+  .closing h2{color:#fff; margin-bottom:10px}
+  .closing p{color:#c8ccd2; margin:0 auto 24px; max-width:460px}
+
+  footer{border-top:1px solid var(--line); padding:32px 0 56px; color:var(--muted); font-size:14.5px}
+  footer p{margin:0 0 6px}
+  footer .fmark{font-family:var(--mono); letter-spacing:.04em; color:var(--ink-soft)}
+
+  @media (max-width:540px){
+    body{font-size:17px}
+    header.head{padding:40px 0 20px}
+    article section{padding:26px 0}
+    .closing{padding:32px 22px}
+    .btn{width:100%; justify-content:center}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <a class="back" href="index.html">← Back</a>
+    <a class="tcta" href="mailto:franciseliang99@gmail.com?subject=Security%20Gate%20Pass%20inquiry">Book a Gate&nbsp;Pass&nbsp;→</a>
+  </div>
+</div>
+
+<header class="head">
+  <div class="wrap">
+    <p class="kicker">Reference build</p>
+    <h1>Anatomy of a Build: a Revocable Token-Vesting Vault</h1>
+    <p class="sub">A reference build showing how I work — the adversarial loop and deterministic gates, on a piece of real, safety-critical design work.</p>
+  </div>
+</header>
+
+<article>
+  <div class="wrap">
+
+    <section>
+      <h2>The brief</h2>
+      <p>Design a <strong>revocable, single-token (ERC-20) vesting vault</strong>:</p>
+      <ul class="clean">
+        <li>A project funds the vault and creates <strong>cliff + linear release</strong> schedules for multiple beneficiaries.</li>
+        <li>Beneficiaries <strong>claim</strong> their vested-but-unclaimed tokens over time.</li>
+        <li>The project (a multisig) can <strong>revoke</strong> a beneficiary's <em>unvested</em> tokens — vested tokens stay with the beneficiary, unvested return to the project.</li>
+        <li><strong>Emergency pause</strong> halts both claim and revoke.</li>
+        <li>Immutable. Two trust boundaries: a privileged owner and untrusted beneficiaries. Explicitly hardened against non-standard ERC-20s (fee-on-transfer, missing return values, rebasing, ERC-777 reentrancy callbacks).</li>
+      </ul>
+      <p>This is exactly the kind of thing AI will happily generate in thirty seconds — and exactly the kind of thing that loses real money when the thirty-second version is wrong.</p>
+    </section>
+
+    <section>
+      <h2>How I built it</h2>
+      <p>The work ran through a five-stage adversarial loop, each stage a separate reviewer that only sees the artifacts — not the reasoning that produced them:</p>
+      <ol class="stages">
+        <li><strong>Intake</strong> → a structured brief: actors, trust boundaries, value flows, failure modes.</li>
+        <li><strong>Contract modeling</strong> → storage layout, asset-conservation invariants, the time-based state machine.</li>
+        <li><strong>Interface design</strong> → function signatures, revert conditions, events, with checks-effects-interactions annotated.</li>
+        <li><strong>Security architecture</strong> → threat model + the implementation spec.</li>
+        <li><strong>A deterministic safety gate</strong>, then an <strong>independent adversarial security reviewer</strong> whose only job is to break the design.</li>
+      </ol>
+      <p class="pull">It did not pass on the first try. The first review came back REVISE — three Major findings. That's the system working.</p>
+    </section>
+
+    <section>
+      <h2>What the review caught — before a line of code</h2>
+
+      <h3><span class="n">1.</span>A subtraction underflow that would brick every pre-cliff call.</h3>
+      <p>The linear-release formula was mathematically correct. But the reviewer flagged that if the implementation evaluated the subtraction <code>t - start</code> <em>before</em> checking the branch condition, then for any schedule with a future start date — a completely normal case — the call would underflow and <strong>revert</strong>. The consequence: <strong>every view and every revoke before the cliff would fail.</strong> The spec's pseudocode had the right branch order but never <em>warned</em> that the subtraction must only be evaluated once the branch condition holds. So I made that explicit and added the acceptance test for it.</p>
+
+      <h3><span class="n">2.</span>A missing deployment safeguard.</h3>
+      <p>The design nowhere required the delivery to carry a "this contract custodies value — get an independent third-party audit and run a testnet rehearsal before mainnet" instruction. For a value-custody contract, that omission is itself a defect. Added.</p>
+
+      <h3><span class="n">3.</span>An undefined boundary return.</h3>
+      <p>The behavior at <code>timestamp &lt; start</code> (return zero vs. revert) wasn't specified, and nothing tested it. Defined and covered.</p>
+
+      <p>All three were closed in a second pass — which, on review, actually <em>hardened</em> the revoke path beyond the original requirement. The second adversarial review returned <strong>PASS</strong> with no new findings.</p>
+    </section>
+
+    <section>
+      <h2>The part I'm most proud of: I don't even trust my own gates</h2>
+      <p>The deterministic gate in this build checks five structural red-lines on the design. When I <em>built that gate</em>, it passed <strong>44 green tests</strong>. I still put it through an independent adversarial review — and the reviewer found it <strong>failing open</strong>: a function whose security intent was missing, empty, or even just misspelled (<code>value_transfer</code> with an underscore instead of <code>value-transfer</code>) would be <strong>silently skipped</strong> by the checks, letting a state-changing function slip past the floor entirely.</p>
+      <div class="spec">
+        <span class="chip">44 passing tests → still fail-open</span>
+        <span class="chip">fixed: block on anything unclassifiable</span>
+        <span class="chip">44 → 51 tests</span>
+      </div>
+      <p style="margin-top:18px">Forty-four passing tests said it was fine. It wasn't. I changed the gate to <strong>fail safe — block on anything it can't classify, rather than skip it</strong> — and the test count went from 44 to 51.</p>
+      <p class="pull">If I hold my own quality checks to "an independent adversary couldn't break it," that's the standard your code gets too.</p>
+    </section>
+
+    <section>
+      <h2>Scope &amp; honesty</h2>
+      <p>I believe the transparency is part of the product, so: this was a <strong>design-and-specification engagement</strong>. It produced a production-intent design, an interface contract, a threat model, and an implementation spec, hardened through two rounds of adversarial review.</p>
+      <div class="callout">
+        <p class="tag">Exactly what this is — and isn't</p>
+        <ul class="clean">
+          <li><strong>No contract was deployed to a live network.</strong> The deliverable is the hardened design and spec.</li>
+          <li><strong>This does not replace a formal third-party audit</strong> before mainnet. It's the work that makes that audit faster and cheaper — by getting the design right first.</li>
+          <li>The deterministic gate here checks the <em>design</em>, structurally. Source-level scanning of Solidity is a separate capability.</li>
+        </ul>
+      </div>
+      <p style="margin-top:20px">I'd rather tell you exactly what this is than oversell it and get caught in due diligence. That instinct is, not coincidentally, the same one that catches the underflow bug.</p>
+    </section>
+
+    <div class="closing">
+      <h2>Want this level of rigor on something you're building?</h2>
+      <p>Start with a fixed-price Security Gate Pass — send code or a contract design, get back a prioritized findings report.</p>
+      <a class="btn btn-primary" href="index.html#start">See the Security Gate Pass <span class="arrow">→</span></a>
+    </div>
+
+  </div>
+</article>
+
+<footer>
+  <div class="wrap">
+    <p class="fmark">A boutique, independent practice.</p>
+    <p>Based in Vancouver · working in English &amp; 中文.</p>
+  </div>
+</footer>
+
+</body>
+</html>
