@@ -141,7 +141,6 @@
 
 <div class="topbar">
   <div class="wrap">
-    <!-- BRAND-LESS mark — swap for a studio name when you choose one -->
     <a class="mark" href="#top"><span class="dot"></span>Adversarial&nbsp;Delivery</a>
     <a class="tcta" href="mailto:franciseliang99@gmail.com?subject=Security%20Gate%20Pass%20inquiry">Book a Gate&nbsp;Pass&nbsp;→</a>
   </div>
@@ -221,9 +220,10 @@
   <div class="wrap">
     <p class="kicker">Proof · anatomy of a build</p>
     <h2>The cheapest place to catch a bug is in the design — before it's code.</h2>
-    <p>I was asked to design a <strong>revocable token-vesting vault</strong> — cliff + linear release, multiple beneficiaries, revocable unvested tokens, emergency pause.</p>
-    <p>Before a single line of implementation was written, the adversarial review caught a defect that would have made <strong>every pre-cliff call to the contract revert</strong> — a subtraction underflow hiding inside an otherwise-correct formula. It also flagged a missing pre-deploy audit requirement and an undefined return at the time boundary. All three were fixed and re-reviewed before handoff.</p>
+    <p>I designed a <strong>revocable token-vesting vault</strong> as a reference build — cliff + linear release, multiple beneficiaries, revocable unvested tokens, emergency pause.</p>
+    <p>Before a single line of implementation was written, the adversarial review caught a defect that would have made <strong>every call that touched that schedule revert until its start date arrived</strong> — a subtraction underflow hiding inside an otherwise-correct formula. It also flagged a missing pre-deploy audit requirement and an undefined return at the time boundary. All three were fixed and re-reviewed before handoff.</p>
     <p><a href="case-study.html"><strong>Read the full anatomy →</strong></a></p>
+    <p><a href="teardown.html"><strong>Or read the deep technical teardown →</strong></a> — the Solidity that shows the trap, the fail-open bug an independent review found in my own gate, and what this does <em>not</em> prove.</p>
     <div class="callout">
       <p class="tag">What this is, honestly</p>
       <p>A design-and-specification engagement, hardened through two rounds of adversarial review. This <strong>does not replace</strong> a formal third-party audit before mainnet — it's the work that makes that audit cheaper and faster by getting the design right first. (This was a <strong>reference build</strong>, self-delivered — shown so you can see the process on real, safety-critical work.)</p>

@@ -5,11 +5,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Anatomy of a Build: a Revocable Token-Vesting Vault</title>
-<meta name="description" content="A reference build showing the adversarial loop and deterministic gates at work — including the design-stage underflow that would have bricked every pre-cliff call, caught before a line of code.">
+<meta name="description" content="A reference build showing the adversarial loop and deterministic gates at work — including the design-stage underflow that would have bricked every call before the schedule's start date, caught before a line of code.">
 <meta name="theme-color" content="#0e7a63">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Anatomy of a Build: a Revocable Token-Vesting Vault">
-<meta property="og:description" content="The adversarial review caught a subtraction underflow that would have reverted every pre-cliff call — before a line of implementation existed. Here's the full anatomy.">
+<meta property="og:description" content="The adversarial review caught a subtraction underflow that would have reverted every call before the schedule's start date — before a line of implementation existed. Here's the full anatomy.">
 <style>
   :root{
     --bg:#fbfaf8; --surface:#ffffff; --ink:#181a1f; --ink-soft:#3b3f48;
@@ -142,8 +142,8 @@
     <section>
       <h2>What the review caught — before a line of code</h2>
 
-      <h3><span class="n">1.</span>A subtraction underflow that would brick every pre-cliff call.</h3>
-      <p>The linear-release formula was mathematically correct. But the reviewer flagged that if the implementation evaluated the subtraction <code>t - start</code> <em>before</em> checking the branch condition, then for any schedule with a future start date — a completely normal case — the call would underflow and <strong>revert</strong>. The consequence: <strong>every view and every revoke before the cliff would fail.</strong> The spec's pseudocode had the right branch order but never <em>warned</em> that the subtraction must only be evaluated once the branch condition holds. So I made that explicit and added the acceptance test for it.</p>
+      <h3><span class="n">1.</span>A subtraction underflow that would brick every call before the start date.</h3>
+      <p>The linear-release formula was mathematically correct. But the reviewer flagged that if the implementation evaluated the subtraction <code>t - start</code> <em>before</em> checking the branch condition, then for any schedule with a future start date — a completely normal case — the call would underflow and <strong>revert</strong>. The consequence: <strong>every view and every revoke touching that schedule would fail until its start date arrived.</strong> The spec's pseudocode had the right branch order but never <em>warned</em> that the subtraction must only be evaluated once the branch condition holds. So I made that explicit and added the acceptance test for it.</p>
 
       <h3><span class="n">2.</span>A missing deployment safeguard.</h3>
       <p>The design nowhere required the delivery to carry a "this contract custodies value — get an independent third-party audit and run a testnet rehearsal before mainnet" instruction. For a value-custody contract, that omission is itself a defect. Added.</p>
@@ -163,7 +163,7 @@
         <span class="chip">44 → 51 tests</span>
       </div>
       <p style="margin-top:18px">Forty-four passing tests said it was fine. It wasn't. I changed the gate to <strong>fail safe — block on anything it can't classify, rather than skip it</strong> — and the test count went from 44 to 51.</p>
-      <p class="pull">If I hold my own quality checks to "an independent adversary couldn't break it," that's the standard your code gets too.</p>
+      <p class="pull">If I hold my own quality checks to "must survive an independent adversary whose only job is to break it — and get fixed when it doesn't," that's the standard your code gets too.</p>
     </section>
 
     <section>
@@ -178,6 +178,7 @@
         </ul>
       </div>
       <p style="margin-top:20px">I'd rather tell you exactly what this is than oversell it and get caught in due diligence. That instinct is, not coincidentally, the same one that catches the underflow bug.</p>
+      <p style="margin-top:20px"><a href="teardown.html"><strong>Go deeper: the full technical teardown →</strong></a> — the Solidity that shows the trap, the fail-open bug an independent review found in my own gate, and what this does <em>not</em> prove.</p>
     </section>
 
     <div class="closing">
