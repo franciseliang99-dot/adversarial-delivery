@@ -121,7 +121,7 @@
         <li>Beneficiaries <strong>claim</strong> their vested-but-unclaimed tokens over time.</li>
         <li>The project (a multisig) can <strong>revoke</strong> a beneficiary's <em>unvested</em> tokens — vested tokens stay with the beneficiary, unvested return to the project.</li>
         <li><strong>Emergency pause</strong> halts both claim and revoke.</li>
-        <li>Immutable. Two trust boundaries: a privileged owner and untrusted beneficiaries. Explicitly hardened against non-standard ERC-20s (fee-on-transfer, missing return values, rebasing, ERC-777 reentrancy callbacks).</li>
+        <li>Immutable. Two trust boundaries: a privileged owner and untrusted beneficiaries. Hardened against non-standard ERC-20s (fee-on-transfer, missing return values, ERC-777 reentrancy callbacks). <strong>Rebasing tokens are explicitly <em>out of support</em>, not hardened against</strong> — a negative rebase breaks the conservation invariant and can't be fixed at the contract layer, so it's carried as a deployment caution instead.</li>
       </ul>
       <p>This is exactly the kind of thing AI will happily generate in thirty seconds — and exactly the kind of thing that loses real money when the thirty-second version is wrong.</p>
     </section>

@@ -128,7 +128,7 @@
         <li>Beneficiaries <strong>claim</strong> vested-but-unclaimed tokens over time.</li>
         <li>The project (a multisig) can <strong>revoke</strong> a beneficiary's <em>unvested</em> tokens — vested tokens stay with the beneficiary; unvested return to the project.</li>
         <li><strong>Emergency pause</strong> halts both claim and revoke.</li>
-        <li>Immutable, <code>solc ^0.8.24</code>, OZ v5.x. Two trust boundaries: a privileged owner and untrusted beneficiaries. Explicitly hardened against non-standard ERC-20s — fee-on-transfer, missing return values, rebasing, ERC-777 reentrancy callbacks.</li>
+        <li>Immutable, <code>solc ^0.8.24</code>, OZ v5.x. Two trust boundaries: a privileged owner and untrusted beneficiaries. Hardened against non-standard ERC-20s — fee-on-transfer, missing return values, ERC-777 reentrancy callbacks. <strong>Rebasing tokens are explicitly <em>out of support</em>, not hardened against</strong> — a negative rebase breaks the conservation invariant and can't be fixed at the contract layer, so it's carried as a deployment caution instead.</li>
       </ul>
       <p>Money-custody, irreversible, adversarial users on one side and a privileged multisig on the other. Exactly where a thirty-second answer costs real money.</p>
     </section>
