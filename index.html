@@ -210,6 +210,13 @@
         <div>
           <h3>Paranoid about my own tools, too.</h3>
           <p>One of these safety gates passed 44 green tests. An independent reviewer still found it silently letting unsafe code through. I fixed it, then re-tested — 51 tests now. <strong>If that's the bar I hold my own quality checks to, imagine the bar for your code.</strong></p>
+          <p class="sub"><strong>A second one, more recent.</strong> I keep a free tool that fills official PDF forms entirely on the user's own machine — nothing uploaded, stored, or logged. That promise is one careless <code>import</code> away from being false, so it isn't a promise: it's a gate that walks the real code path and fails on any network or shell-out capability. <strong>Its first green was wrong.</strong> I had written “you can't split the product path by directory” in the checker's own docstring — then used a directory pattern to pick the starting set, quietly excluding the file that writes the final output. The check was right; the <em>set it ran over</em> was not. That is the failure mode I look for in client work, and I found it in mine.</p>
+          <div class="spec">
+            <span class="chip">allow-list, not block-list</span>
+            <span class="chip">21 mutation arms</span>
+            <span class="chip">catches dynamic __import__</span>
+            <span class="chip">prints its own uncovered gaps</span>
+          </div>
         </div>
       </div>
     </div>
